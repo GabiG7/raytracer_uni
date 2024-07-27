@@ -62,20 +62,6 @@ def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width,
     screen_origin = screen_center - camera.camera_right_vector * (camera.screen_width / 2)\
                     - camera.up_vector * (camera.screen_height / 2)
 
-    # xs = np.arange(0, image_height)
-    # ys = np.arange(0, image_width)
-
-    # xx, yy = np.meshgrid(xs, ys)
-    # xs = xx.flatten()
-    # ys = yy.flatten()
-
-    # pixel_centers = screen_origin + camera.camera_right_vector * (ys + 0.5) * pixel_width\
-    #                 + camera.up_vector * (xs + 0.5) * pixel_height
-    # rays_directions = pixel_centers - camera.position
-    # rays_origin = np.full(xs.shape[0], camera.position)
-    # np_rays = points = np.empty(Ray(rays_origin, rays_directions), dtype=Ray)
-
-
     for i in range(image_height):
         for j in range(image_width):
             # Compute the pixel position on the screen
@@ -150,8 +136,6 @@ def main():
 
     # Save the output image
     save_image(image_array)
-
-
 
 
 if __name__ == '__main__':
