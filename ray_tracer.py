@@ -131,12 +131,13 @@ def main():
 
     # TODO: Implement the ray tracer
 
-
     # Dummy result
     image_array = np.zeros((100, 100, 3))
 
     # Save the output image
     save_image(image_array)
+
+
 
 
 if __name__ == '__main__':
