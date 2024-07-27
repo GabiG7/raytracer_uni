@@ -143,11 +143,6 @@ def main():
     for ray in pixel_rays:
         rays_intersections.append(get_ray_intersection(ray, objects))
 
-    # camera.create_pixel_grid(args.width, args.height)
-    # matrix = camera.create_rotation_matrix_from_vector(np.array([0, 0, 1]))
-    # screen_point = np.array([1, -100, -4])
-    # translated_point = camera.transform_point_to_xy_plane(screen_point)
-
     # TODO: Implement the ray tracer
 
     # Dummy result
