@@ -51,7 +51,46 @@ def parse_scene_file(file_path):
                 index_counter += 1
             else:
                 raise ValueError("Unknown object type: {}".format(obj_type))
+
     return camera, scene_settings, objects
+
+
+def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width, image_height):
+    rays = []
+
+    # Compute the origin of the screen (top-left corner)
+    screen_origin = screen_center - camera.camera_right_vector * (camera.screen_width / 2)\
+                    - camera.up_vector * (camera.screen_height / 2)
+
+    for i in range(image_height):
+        for j in range(image_width):
+            # Compute the pixel position on the screen
+            pixel_center = screen_origin + camera.camera_right_vector * (j + 0.5) * pixel_width\
+                           + camera.up_vector * (i + 0.5) * pixel_height
+
+            # Compute the ray direction
+            ray_direction = pixel_center - camera.position
+            rays.append(Ray(camera.position, ray_direction))
+
+    return rays
+
+
+def get_ray_intersection(ray, scene_objects):
+    t_min = np.inf
+    index_min = None
+    for obj in scene_objects:
+        if type(obj) is Sphere:
+            t, index = obj.intersect(ray)
+        elif type(obj) is InfinitePlane:
+            t, index = obj.intersect(ray)
+        else:
+            continue
+
+        if t < t_min:
+            t_min = t
+            index_min = index
+
+    return t_min, index_min
 
 
 def save_image(image_array):
@@ -102,17 +141,35 @@ def main():
     parser = argparse.ArgumentParser(description='Python Ray Tracer')
     parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/simple_pool.txt")
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
-    parser.add_argument('--width', type=int, default=500, help='Image width')
-    parser.add_argument('--height', type=int, default=500, help='Image height')
+    # parser.add_argument('--width', type=int, default=500, help='Image width')
+    # parser.add_argument('--height', type=int, default=500, help='Image height')
+    parser.add_argument('--width', type=int, default=100, help='Image width')
+    parser.add_argument('--height', type=int, default=100, help='Image height')
     args = parser.parse_args()
 
     # Parse the scene file
     camera, scene_settings, objects = parse_scene_file(args.scene_file)
+    direction_ray = Ray(camera.position, camera.camera_forward_vector)
+    aspect_ratio = float(args.width) / args.height
+    camera.screen_height = camera.screen_width / aspect_ratio
+
+    # Compute the screen center position
+    screen_center = direction_ray.get_point_at_distance(camera.screen_distance)
+
+    # Compute the pixel size
+    pixel_width = camera.screen_width / args.width
+    pixel_height = camera.screen_height / args.height  # Assuming square pixels
+
+    # get the rays through all the pixels
+    pixel_rays = generate_rays(camera, screen_center, pixel_width, pixel_height, args.width, args.height)
+    rays_intersections = []
+    for ray in pixel_rays:
+        rays_intersections.append(get_ray_intersection(ray, objects))
 
     # TODO: Implement the ray tracer
 
     # Dummy result
-    image_array = np.zeros((500, 500, 3))
+    image_array = np.zeros((100, 100, 3))
 
     # Save the output image
     save_image(image_array)
