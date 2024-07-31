@@ -58,7 +58,44 @@ def save_image(image_array):
     image = Image.fromarray(np.uint8(image_array))
 
     # Save the image to a file
-    image.save("scenes/trial.png")
+    image.save("scenes/trial.png")2
+
+# Helper functions
+def generate_shadow_ray(intersection_point, light_position):
+    # Direction of shadow ray
+    direction_to_light = light_position - intersection_point
+    # Normalize direction vector
+    direction_to_light = direction_to_light / np.linalg.norm(direction_to_light)
+    return Ray(intersection_point, direction_to_light)
+
+def is_in_shadow(intersection_point, light, objects):
+    shadow_ray = generate_shadow_ray(intersection_point, light.position)
+    for obj in objects:
+        t, index = obj.intersect(shadow_ray)
+        # Case of  object in the way casting a shadow
+        if t is not None:
+            return True
+    # Case of no intersections
+    return False
+
+def calculate_light_contribution(intersection_point, normal, view_direction, light, materials):
+    # TO COMPLETE
+    # Normalize all vectors?
+    return np.zeros(3)
+
+
+def compute_lighting(intersection_point, normal, view_direction, materials, lights, objects):
+    # Initialize to all black (?)
+    color = np.zeros(3)
+    for light in lights:
+        # Case of point in full shadow (no light calculations needed)
+        if is_in_shadow(intersection_point, light, objects):
+            continue
+
+        # Calculate the light contribution from every light
+        light_contribution = calculate_light_contribution(intersection_point, normal, view_direction, light, materials)
+        color += light_contribution
+    return color
 
 
 def main():
@@ -74,12 +111,13 @@ def main():
 
     # TODO: Implement the ray tracer
 
-
     # Dummy result
     image_array = np.zeros((500, 500, 3))
 
     # Save the output image
     save_image(image_array)
+
+
 
 
 if __name__ == '__main__':
