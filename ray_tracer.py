@@ -86,7 +86,7 @@ def get_ray_intersection(ray, scene_objects):
         else:
             continue
 
-        if t < t_min:
+        if t is not None and t < t_min:
             t_min = t
             index_min = index
 
