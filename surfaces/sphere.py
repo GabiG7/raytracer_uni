@@ -1,5 +1,7 @@
 import numpy as np
 
+import vector_utils
+
 
 class Sphere:
     def __init__(self, position, radius, material_index, index):
@@ -28,3 +30,6 @@ class Sphere:
             return None, self.index
 
         return min(t0, t1), self.index
+
+    def get_normal(self, hit_point):
+        return vector_utils.normalize_vector(hit_point - self.position)

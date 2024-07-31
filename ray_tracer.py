@@ -2,6 +2,7 @@ import argparse
 from PIL import Image
 import numpy as np
 
+import vector_utils
 from camera import Camera
 from light import Light
 from material import Material
@@ -75,22 +76,46 @@ def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width,
     return rays
 
 
-def get_ray_intersection(ray, scene_objects):
+def get_ray_intersection(ray, surfaces):
     t_min = np.inf
     index_min = None
-    for obj in scene_objects:
-        if type(obj) is Sphere:
-            t, index = obj.intersect(ray)
-        elif type(obj) is InfinitePlane:
-            t, index = obj.intersect(ray)
-        else:
-            continue
-
+    for obj in surfaces:
+        t, index = obj.intersect(ray)
         if t is not None and t < t_min:
             t_min = t
             index_min = index
 
     return t_min, index_min
+
+
+def get_pixel_color(ray, intersection, materials, lights, camera, background_color):
+
+    pixel_color = np.zeros(3)
+    distance, material_index = intersection
+    if distance is None:
+        return background_color
+    # TODO check if light hits the object
+
+    hit_point = ray.get_point_at_distance(distance)
+    normal = materials[material_index].get_normal(hit_point)
+    camera_point_vector = vector_utils.normalize_vector(camera.position - hit_point)
+
+    for light in lights:
+        ambient_color = materials[material_index].diffuse_color * light.color
+
+        light_point_vector = vector_utils.normalize_vector(light.position - hit_point)
+        diffuse_color = materials[material_index].diffuse_color * light.diffuse_color * \
+                        np.dot(normal, light_point_vector)
+
+        reflection_point_vector = vector_utils.normalize_vector(2 * np.dot(normal, light_point_vector) * normal
+                                                                - light_point_vector)
+        specular_color = materials[material_index].specular_color * light.specular_color * \
+                         (np.dot(reflection_point_vector, camera_point_vector) ** materials[material_index].shininess)
+        light_color = ambient_color + diffuse_color + specular_color
+        pixel_color += light_color
+        # TODO call shadow functions
+
+    return light_color
 
 
 def save_image(image_array):
@@ -112,6 +137,9 @@ def main():
 
     # Parse the scene file
     camera, scene_settings, objects = parse_scene_file(args.scene_file)
+    lights = [obj for obj in objects if type(obj) is Light]
+    materials = [obj for obj in objects if type(obj) is Material]
+    surfaces = [obj for obj in objects if type(obj) is in [Cube, Sphere, InfinitePlane]]
     direction_ray = Ray(camera.position, camera.camera_forward_vector)
     aspect_ratio = float(args.width) / args.height
     camera.screen_height = camera.screen_width / aspect_ratio
@@ -127,9 +155,14 @@ def main():
     pixel_rays = generate_rays(camera, screen_center, pixel_width, pixel_height, args.width, args.height)
     rays_intersections = []
     for ray in pixel_rays:
-        rays_intersections.append(get_ray_intersection(ray, objects))
+        rays_intersections.append(get_ray_intersection(ray, surfaces))
 
     # TODO: Implement the ray tracer
+
+    ray_colors = []
+    for i in range(len(pixel_rays)):
+        ray_colors.appends(get_pixel_color(pixel_rays[i], rays_intersections[i], materials, lights, camera,
+                                           scene_settings.background_color))
 
     # Dummy result
     image_array = np.zeros((100, 100, 3))
