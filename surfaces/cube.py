@@ -34,7 +34,7 @@ class Cube:
             if direction[i] == 0:
                 # To avoid division by zero
                 if origin[i] < min_point[i] or origin[i] > max_point[i]:
-                    return None
+                    return None, self.index
             else:
                 # Compute t values for the intersections on the current axis: t1 = entrance, t2 = exit
                 t1 = (min_point[i] - origin[i]) / direction[i]

@@ -12,10 +12,10 @@ class InfinitePlane:
         denominator = self.normal.dot(ray.direction)
         epsilon = 1e-6
         if np.abs(denominator) < epsilon:
-            return np.inf, self.index
+            return None, self.index
 
         t = (-self.normal.dot(ray.origin) + self.offset) / denominator
         if t < 0:
-            return np.inf, self.index
+            return None, self.index
 
         return t, self.index

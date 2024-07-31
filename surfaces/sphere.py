@@ -1,5 +1,7 @@
 import numpy as np
 
+import vector_utils
+
 
 class Sphere:
     def __init__(self, position, radius, material_index, index):
@@ -17,7 +19,7 @@ class Sphere:
 
         # ray doesn't intersect with the camera
         if discriminant < 0:
-            return np.inf, self.index
+            return None, self.index
 
         sqrt_res = np.sqrt(discriminant)
         t0 = (-b - sqrt_res) / 2
@@ -25,6 +27,9 @@ class Sphere:
 
         # case where the object is behind the camera
         if t0 < 0 and t1 < 0:
-            return np.inf, self.index
+            return None, self.index
 
         return min(t0, t1), self.index
+
+    def get_normal(self, hit_point):
+        return vector_utils.normalize_vector(hit_point - self.position)
