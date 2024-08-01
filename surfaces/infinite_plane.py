@@ -1,5 +1,4 @@
 import numpy as np
-import vector_utils
 
 
 class InfinitePlane:
@@ -22,4 +21,4 @@ class InfinitePlane:
         return t, self.index
 
     def get_normal(self, hit_point):
-        return vector_utils.normalize_vector(hit_point - self.position)
+        return self.normal
