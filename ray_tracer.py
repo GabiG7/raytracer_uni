@@ -124,7 +124,9 @@ def get_pixel_color(ray, intersection, materials, lights, camera, background_col
 
 
 def save_image(image_array):
-    image = Image.fromarray(np.uint8(image_array))
+    # image = Image.fromarray(np.uint8(image_array))
+    image_array = image_array * 255
+    image = Image.fromarray(image_array.astype('uint8'))
 
     # Save the image to a file
     image.save("scenes/trial.png")
@@ -177,6 +179,9 @@ def main():
 
     # Dummy result
     image_array = np.zeros((100, 100, 3))
+    for i in range(args.height):
+        for j in range(args.width):
+            image_array[i, j] = np.clip(ray_colors[i * args.width + j], 0, 1)
 
     # Save the output image
     save_image(image_array)
