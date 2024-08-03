@@ -56,6 +56,11 @@ def parse_scene_file(file_path):
     return camera, scene_settings, objects
 
 
+def fix_list_indices(obj_list):
+    for i, obj in enumerate(obj_list):
+        obj.index = i
+
+
 def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width, image_height):
     rays = []
 
@@ -138,8 +143,14 @@ def main():
     # Parse the scene file
     camera, scene_settings, objects = parse_scene_file(args.scene_file)
     lights = [obj for obj in objects if type(obj) is Light]
+    fix_list_indices(lights)
     materials = [obj for obj in objects if type(obj) is Material]
-    surfaces = [obj for obj in objects if type(obj) is in [Cube, Sphere, InfinitePlane]]
+    fix_list_indices(materials)
+    surfaces = [obj for obj in objects if type(obj) in [Cube, Sphere, InfinitePlane]]
+    fix_list_indices(surfaces)
+    for surface in surfaces:
+        surface.material_index = objects[surface.material_index].index
+
     direction_ray = Ray(camera.position, camera.camera_forward_vector)
     aspect_ratio = float(args.width) / args.height
     camera.screen_height = camera.screen_width / aspect_ratio
