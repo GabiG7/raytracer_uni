@@ -19,3 +19,6 @@ class InfinitePlane:
             return None, self.index
 
         return t, self.index
+
+    def get_normal(self, hit_point):
+        return self.normal
