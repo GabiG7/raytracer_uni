@@ -59,3 +59,20 @@ class Cube:
         # Case of no intersection
         return None, self.index
 
+    def get_normal(self, hit_point):
+        lower_bound, upper_bound = self.get_bounds()
+        epsilon = 1e-6  # Tolerance for numerical precision
+
+        if abs(hit_point[0] - lower_bound[0]) < epsilon:
+            return np.array([-1, 0, 0])
+        elif abs(hit_point[0] - upper_bound[0]) < epsilon:
+            return np.array([1, 0, 0])
+        elif abs(hit_point[1] - lower_bound[1]) < epsilon:
+            return np.array([0, -1, 0])
+        elif abs(hit_point[1] - upper_bound[1]) < epsilon:
+            return np.array([0, 1, 0])
+        elif abs(hit_point[2] - lower_bound[2]) < epsilon:
+            return np.array([0, 0, -1])
+        # if abs(hit_point[2] - upper_bound[2]) < epsilon:
+        else:
+            return np.array([0, 0, 1])
