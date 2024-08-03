@@ -95,31 +95,46 @@ def get_ray_intersection(ray, surfaces):
 
 def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, background_color):
     pixel_color = np.zeros(3)
-    distance, material_index = intersection
+    distance, surface_index = intersection
+    current_surface = surfaces[surface_index]
+    current_material = materials[current_surface.material_index]
     if distance is None:
         return background_color
     # TODO check if light hits the object
 
-    hit_point = ray.get_point_at_distance(distance)
-    normal = materials[material_index].get_normal(hit_point)
-    camera_point_vector = vector_utils.normalize_vector(camera.position - hit_point)
+    # coordinates of the point where the pixel ray hits the surface
+    pixel_ray_to_intersection = ray.get_point_at_distance(distance)
+
+    # the normal to the hit point on the surface
+    normal = current_surface.get_normal(pixel_ray_to_intersection)
+
+    # ray from the camera to the surface intersection point
+    intersection_point_to_camera_vector = vector_utils.normalize_vector(camera.position - pixel_ray_to_intersection)
 
     for light in lights:
-        ambient_color = materials[material_index].diffuse_color * light.color
 
-        light_point_vector = vector_utils.normalize_vector(light.position - hit_point)
-        diffuse_color = materials[material_index].diffuse_color * light.diffuse_color * \
-                        np.dot(normal, light_point_vector)
+        # ambient color is just the color of the material multiplied by the light
+        ambient_color = current_material.diffuse_color * light.color
 
-        reflection_point_vector = vector_utils.normalize_vector(2 * np.dot(normal, light_point_vector) * normal
-                                                                - light_point_vector)
-        specular_color = materials[material_index].specular_color * light.specular_color * \
-                         (np.dot(reflection_point_vector, camera_point_vector) ** materials[material_index].shininess)
+        # ray between the light and the intersection point on the surface
+        intersection_point_to_light_vector = vector_utils.normalize_vector(light.position - pixel_ray_to_intersection)
+
+        # calculate the diffuse color of the pixel
+        diffuse_color = current_material.diffuse_color * light.color * \
+                        np.dot(normal, intersection_point_to_light_vector)
+
+        # reflection ray to the vector from light to surface
+        reflection_point_vector = vector_utils.normalize_vector(2 * np.dot(normal, intersection_point_to_light_vector) * normal
+                                                                - intersection_point_to_light_vector)
+        specular_color = current_material.specular_color * light.specular_intensity * \
+                         (np.dot(reflection_point_vector, intersection_point_to_camera_vector) ** current_material.shininess)
         light_color = ambient_color + diffuse_color + specular_color
-        pixel_color += light_color
+
+        pixel_color += (current_material.transparency * background_color) + \
+                       ((1 - current_material.transparency) * light_color) + current_material.reflection_color
         # TODO call shadow functions
 
-    return light_color
+    return pixel_color
 
 
 def save_image(image_array):
