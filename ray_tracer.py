@@ -93,8 +93,7 @@ def get_ray_intersection(ray, surfaces):
     return t_min, index_min
 
 
-def get_pixel_color(ray, intersection, materials, lights, camera, background_color):
-
+def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, background_color):
     pixel_color = np.zeros(3)
     distance, material_index = intersection
     if distance is None:
@@ -174,8 +173,8 @@ def main():
 
     ray_colors = []
     for i in range(len(pixel_rays)):
-        ray_colors.appends(get_pixel_color(pixel_rays[i], rays_intersections[i], materials, lights, camera,
-                                           scene_settings.background_color))
+        ray_colors.append(get_pixel_color(pixel_rays[i], rays_intersections[i], surfaces, materials, lights, camera,
+                                          scene_settings.background_color))
 
     # Dummy result
     image_array = np.zeros((100, 100, 3))
