@@ -22,3 +22,6 @@ class InfinitePlane:
 
     def get_normal(self, hit_point):
         return self.normal
+
+    def is_on_plane(self, point):
+        return np.dot(point, self.normal) == self.offset
