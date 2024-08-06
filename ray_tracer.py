@@ -184,15 +184,13 @@ def main():
     for ray in pixel_rays:
         rays_intersections.append(get_ray_intersection(ray, surfaces))
 
-    # TODO: Implement the ray tracer
-
     ray_colors = []
     for i in range(len(pixel_rays)):
         ray_colors.append(get_pixel_color(pixel_rays[i], rays_intersections[i], surfaces, materials, lights, camera,
                                           scene_settings.background_color))
 
     # Dummy result
-    image_array = np.zeros((100, 100, 3))
+    image_array = np.zeros((args.width, args.height, 3))
     for i in range(args.height):
         for j in range(args.width):
             image_array[i, j] = np.clip(ray_colors[i * args.width + j], 0, 1)
