@@ -165,7 +165,7 @@ def main():
     surfaces = [obj for obj in objects if type(obj) in [Cube, Sphere, InfinitePlane]]
     fix_list_indices(surfaces)
     for surface in surfaces:
-        surface.material_index = objects[surface.material_index].index
+        surface.material_index = objects[surface.material_index - 1].index
 
     direction_ray = Ray(camera.position, camera.camera_forward_vector)
     aspect_ratio = float(args.width) / args.height
