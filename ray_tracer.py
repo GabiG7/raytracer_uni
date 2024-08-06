@@ -93,6 +93,50 @@ def get_ray_intersection(ray, surfaces):
     return t_min, index_min
 
 
+def generate_shadow_ray(intersection_point, light_position):
+    # Direction of shadow ray
+    direction_to_light = light_position - intersection_point
+
+    # Normalize direction vector
+    direction_to_light = direction_to_light / np.linalg.norm(direction_to_light)
+
+    return Ray(intersection_point, direction_to_light)
+
+
+def is_in_shadow(intersection_point, light, objects):
+    shadow_ray = generate_shadow_ray(intersection_point, light.position)
+    for obj in objects:
+        t, index = obj.intersect(shadow_ray)
+        # Case of  object in the way casting a shadow
+        if t is not None:
+            return True
+
+    # Case of no intersections
+    return False
+
+
+def calculate_light_intensity(intersection_point, light, normal, objects):
+    # Get light plane samples by light radius and normal
+    sample_points = light.get_sample_points(normal)
+    total_samples = len(sample_points)
+    unobstructed_samples = 0
+
+    for sample_point in sample_points:
+        shadow_ray = generate_shadow_ray(intersection_point, sample_point)
+
+        # Check if the path to the light sample is unobstructed
+        if not is_in_shadow(intersection_point, shadow_ray, objects):
+            unobstructed_samples += 1
+
+    # Calculate the fraction of light that is not obstructed
+    unobstructed_fraction = unobstructed_samples / total_samples
+
+    # Calculate the total contribution of the light source
+    light_intensity = unobstructed_fraction * light.shadow_intensity + (1 - light.shadow_intensity)
+
+    return light_intensity
+
+
 def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, background_color):
     pixel_color = np.zeros(3)
     distance, surface_index = intersection
@@ -148,6 +192,12 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, back
                    ((1 - current_material.transparency) * light_color) + current_material.reflection_color
 
     # TODO call shadow functions
+    # Shadow calculation
+    # light_intensity = calculate_light_intensity(intersection_point, light, normal, objects)
+
+    # Final light contribution from all calculated factors
+    # light_contribution = ambient_color + (diffuse_color + specular_color) * light_intensity
+    # pixel_color += light_contribution
 
     return pixel_color
 
@@ -212,6 +262,8 @@ def main():
 
     # Save the output image
     save_image(image_array)
+
+
 
 
 if __name__ == '__main__':
