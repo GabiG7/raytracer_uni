@@ -213,12 +213,12 @@ def save_image(image_array):
 
 def main():
     parser = argparse.ArgumentParser(description='Python Ray Tracer')
-    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/simple_pool.txt")
+    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/pool.txt")
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
-    # parser.add_argument('--width', type=int, default=500, help='Image width')
-    # parser.add_argument('--height', type=int, default=500, help='Image height')
-    parser.add_argument('--width', type=int, default=100, help='Image width')
-    parser.add_argument('--height', type=int, default=100, help='Image height')
+    parser.add_argument('--width', type=int, default=500, help='Image width')
+    parser.add_argument('--height', type=int, default=500, help='Image height')
+    # parser.add_argument('--width', type=int, default=100, help='Image width')
+    # parser.add_argument('--height', type=int, default=100, help='Image height')
     args = parser.parse_args()
 
     # Parse the scene file
@@ -262,8 +262,6 @@ def main():
 
     # Save the output image
     save_image(image_array)
-
-
 
 
 if __name__ == '__main__':
