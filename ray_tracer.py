@@ -65,7 +65,7 @@ def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width,
     rays = []
 
     # Compute the origin of the screen (top-left corner)
-    screen_origin = screen_center - camera.camera_right_vector * (camera.screen_width / 2)\
+    screen_origin = screen_center - camera.camera_right_vector * (camera.screen_width / 2) \
                     - camera.up_vector * (camera.screen_height / 2)
 
     for i in range(image_height):
