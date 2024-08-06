@@ -96,11 +96,11 @@ def get_ray_intersection(ray, surfaces):
 def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, background_color):
     pixel_color = np.zeros(3)
     distance, surface_index = intersection
+
+    if surface_index is None:
+        return background_color
     current_surface = surfaces[surface_index]
     current_material = materials[current_surface.material_index]
-    if distance is None:
-        return background_color
-    # TODO check if light hits the object
 
     # coordinates of the point where the pixel ray hits the surface
     pixel_ray_to_intersection = ray.get_point_at_distance(distance)
