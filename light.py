@@ -11,25 +11,26 @@ class Light:
         self.radius = radius
         self.index = index
 
-    def get_sample_points(self, normal):
-        # Number of points along each axis of the square
-        count = int(self.radius)
-        spacing = 1.0
+    def get_sample_points(self, target_point, number_of_shadow_rays):
+        light_direction = vector_utils.normalize_vector(self.position - target_point)
+        up_vector = np.array([0, 1, 0]) if np.abs(light_direction[1]) < 0.999 else np.array([1, 0, 0])
+        right_vector = vector_utils.normalize_vector(np.cross(light_direction, up_vector))
+        up_vector = vector_utils.normalize_vector(np.cross(right_vector, light_direction))
 
-        # Create orthogonal basis vectors for the light matrix plane
-        u = np.cross(normal, [0, 1, 0])
-        if np.linalg.norm(u) == 0:
-            u = np.cross(normal, [1, 0, 0])
-        vector_utils.normalize_vector(u)
-        v = np.cross(normal, u)
+        # right_vector *= self.radius
+        # up_vector *= self.radius
+        right_vector *= self.radius / number_of_shadow_rays
+        up_vector *= self.radius / number_of_shadow_rays
 
-        # Center the grid around the light's position
+        rand_offsets = np.random.rand(number_of_shadow_rays, number_of_shadow_rays, 2) - 0.5
+
         sample_points = []
-        start = -spacing * (count // 2)
-        for i in range(count):
-            for j in range(count):
-                point = start + i * spacing * u + start + j * spacing * v
-                sample_points.append(self.position + point)
+        for i in range(number_of_shadow_rays):
+            for j in range(number_of_shadow_rays):
+                # u = (i + np.random.rand()) / number_of_shadow_rays - 0.5
+                # v = (j + np.random.rand()) / number_of_shadow_rays - 0.5
+                # sample_points.append(self.position + u * right_vector + v * up_vector)
+                sample_points.append(self.position + (i + rand_offsets[i, j, 0])
+                                     * right_vector + (j + rand_offsets[i, j, 1]) * up_vector)
 
-        # A list of numpy arrays representing the 3D coordinates of the light sample points
-        return sample_points
+        return np.array(sample_points)
