@@ -95,41 +95,29 @@ def get_ray_intersection(ray, surfaces):
 
 def generate_shadow_ray(intersection_point, light_position):
     # Direction of shadow ray
-    direction_to_light = light_position - intersection_point
+    direction_from_light = intersection_point - light_position
 
     # Normalize direction vector
-    direction_to_light = direction_to_light / np.linalg.norm(direction_to_light)
+    direction_from_light = vector_utils.normalize_vector(direction_from_light)
 
-    return Ray(intersection_point, direction_to_light)
-
-
-def is_in_shadow(intersection_point, light, objects):
-    shadow_ray = generate_shadow_ray(intersection_point, light.position)
-    for obj in objects:
-        t, index = obj.intersect(shadow_ray)
-        # Case of  object in the way casting a shadow
-        if t is not None:
-            return True
-
-    # Case of no intersections
-    return False
+    return Ray(light_position, direction_from_light)
 
 
-def calculate_light_intensity(intersection_point, light, normal, objects):
+def calculate_light_intensity(intersection_point, current_surface_index, light, shadow_rays_number, surfaces):
     # Get light plane samples by light radius and normal
-    sample_points = light.get_sample_points(normal)
+    sample_points = light.get_sample_points(intersection_point, shadow_rays_number)
     total_samples = len(sample_points)
-    unobstructed_samples = 0
+    rays_that_hit_the_surface = 0
 
     for sample_point in sample_points:
         shadow_ray = generate_shadow_ray(intersection_point, sample_point)
 
-        # Check if the path to the light sample is unobstructed
-        if not is_in_shadow(intersection_point, shadow_ray, objects):
-            unobstructed_samples += 1
+        shadow_ray_distance, shadow_ray_surface_index = get_ray_intersection(shadow_ray, surfaces)
+        if shadow_ray_surface_index == current_surface_index:
+            rays_that_hit_the_surface += 1
 
     # Calculate the fraction of light that is not obstructed
-    unobstructed_fraction = unobstructed_samples / total_samples
+    unobstructed_fraction = rays_that_hit_the_surface / total_samples
 
     # Calculate the total contribution of the light source
     light_intensity = unobstructed_fraction * light.shadow_intensity + (1 - light.shadow_intensity)
@@ -137,12 +125,12 @@ def calculate_light_intensity(intersection_point, light, normal, objects):
     return light_intensity
 
 
-def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, background_color):
+def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scene_settings):
     pixel_color = np.zeros(3)
     distance, surface_index = intersection
 
     if surface_index is None:
-        return background_color
+        return scene_settings.background_color
     current_surface = surfaces[surface_index]
     current_material = materials[current_surface.material_index]
 
@@ -163,12 +151,16 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, back
 
     for light in lights:
 
+        light_intensity = calculate_light_intensity(pixel_ray_to_intersection, surface_index, light,
+                                                    scene_settings.root_number_shadow_rays, surfaces)
+
         # check if the light hits the current surface
-        light_ray_to_object_direction = pixel_ray_to_intersection - light.position
-        light_ray_to_object = Ray(light.position, light_ray_to_object_direction)
-        light_object_ray_distance, light_object_ray_surface_index = get_ray_intersection(light_ray_to_object, surfaces)
-        if light_object_ray_surface_index != surface_index:
-            continue
+        # light_ray_to_object_direction = pixel_ray_to_intersection - light.position
+        # light_ray_to_object = Ray(light.position, light_ray_to_object_direction)
+        # light_object_ray_distance, light_object_ray_surface_index = get_ray_intersection(light_ray_to_object,
+        #                                                                                 surfaces)
+        # if light_object_ray_surface_index != surface_index:
+        #    continue
 
         # ambient color is just the color of the material multiplied by the light
         # ambient_color += current_material.diffuse_color * light.color
@@ -177,27 +169,21 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, back
         intersection_point_to_light_vector = vector_utils.normalize_vector(light.position - pixel_ray_to_intersection)
 
         # calculate the diffuse color of the pixel
-        diffuse_color += current_material.diffuse_color * light.color * np.dot(normal,
-                                                                               intersection_point_to_light_vector)
+        current_light_diffuse = current_material.diffuse_color * light.color * np.dot(
+            normal, intersection_point_to_light_vector)
+        diffuse_color += current_light_diffuse * light_intensity
 
         # reflection ray to the vector from light to surface
         reflection_point_vector = vector_utils.normalize_vector(2 * np.dot(normal,
                                                                            intersection_point_to_light_vector) * normal
                                                                 - intersection_point_to_light_vector)
-        specular_color += current_material.specular_color * light.specular_intensity * (np.dot(
+        current_light_specular = current_material.specular_color * light.specular_intensity * (np.dot(
             reflection_point_vector, intersection_point_to_camera_vector) ** current_material.shininess)
+        specular_color += current_light_specular * light_intensity
 
     light_color = diffuse_color + specular_color
-    pixel_color += (current_material.transparency * background_color) + \
+    pixel_color += (current_material.transparency * scene_settings.background_color) + \
                    ((1 - current_material.transparency) * light_color) + current_material.reflection_color
-
-    # TODO call shadow functions
-    # Shadow calculation
-    # light_intensity = calculate_light_intensity(intersection_point, light, normal, objects)
-
-    # Final light contribution from all calculated factors
-    # light_contribution = ambient_color + (diffuse_color + specular_color) * light_intensity
-    # pixel_color += light_contribution
 
     return pixel_color
 
@@ -213,12 +199,12 @@ def save_image(image_array):
 
 def main():
     parser = argparse.ArgumentParser(description='Python Ray Tracer')
-    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/pool.txt")
+    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/sample_pool.txt")
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
-    parser.add_argument('--width', type=int, default=500, help='Image width')
-    parser.add_argument('--height', type=int, default=500, help='Image height')
-    # parser.add_argument('--width', type=int, default=100, help='Image width')
-    # parser.add_argument('--height', type=int, default=100, help='Image height')
+    # parser.add_argument('--width', type=int, default=300, help='Image width')
+    # parser.add_argument('--height', type=int, default=300, help='Image height')
+    parser.add_argument('--width', type=int, default=100, help='Image width')
+    parser.add_argument('--height', type=int, default=100, help='Image height')
     args = parser.parse_args()
 
     # Parse the scene file
@@ -246,13 +232,22 @@ def main():
     # get the rays through all the pixels
     pixel_rays = generate_rays(camera, screen_center, pixel_width, pixel_height, args.width, args.height)
     rays_intersections = []
+
+    counter = 0
     for ray in pixel_rays:
         rays_intersections.append(get_ray_intersection(ray, surfaces))
+        counter += 1
+        if counter % 1000 == 0:
+            print(f"counter = {counter}")
 
     ray_colors = []
+    counter = 0
     for i in range(len(pixel_rays)):
         ray_colors.append(get_pixel_color(pixel_rays[i], rays_intersections[i], surfaces, materials, lights, camera,
-                                          scene_settings.background_color))
+                                          scene_settings))
+        counter += 1
+        if counter % 1000 == 0:
+            print(f"counter = {counter}")
 
     # Dummy result
     image_array = np.zeros((args.width, args.height, 3))
