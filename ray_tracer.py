@@ -82,13 +82,17 @@ def generate_rays(camera, screen_center, pixel_width, pixel_height, image_width,
 
 
 def get_ray_intersection(ray, surfaces, excepted_surface_index=None):
+    # Tolerance epsilon for intersections
+    epsilon = 1e-5
     t_min = np.inf
     index_min = None
+
     for obj in surfaces:
         if excepted_surface_index and obj.index == excepted_surface_index:
             continue
         t, index = obj.intersect(ray)
-        if t is not None and t < t_min:
+
+        if t is not None and t < t_min and t > epsilon:
             t_min = t
             index_min = index
 
@@ -188,16 +192,19 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scen
 
     light_color = diffuse_color + specular_color
 
+    # Tolerance epsilon for intersections
+    epsilon = 1e-5
+
     # Reflection color calculation
     object_reflection_color = np.zeros(3)
     if np.any(current_material.reflection_color > 0) and depth < scene_settings.max_recursions:
         reflected_direction = get_reflected_direction(ray.direction, normal)
-        reflected_ray = Ray(pixel_ray_to_intersection, reflected_direction)
-        reflected_ray_intersection = get_ray_intersection(reflected_ray, surfaces)
+        reflected_origin = pixel_ray_to_intersection + epsilon * reflected_direction
+        reflected_ray = Ray(reflected_origin, reflected_direction)
+
         reflected_color = get_pixel_color(reflected_ray, intersection, surfaces, materials, lights,
                                           camera, scene_settings, depth + 1)
         object_reflection_color += reflected_color * current_material.reflection_color
-
 
     # Transparency color calculation
     object_background_color = np.zeros(3)
@@ -205,11 +212,10 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scen
         continuous_ray = Ray(pixel_ray_to_intersection, ray.direction)
         continuous_ray_intersection = get_ray_intersection(continuous_ray, surfaces,
                                                            excepted_surface_index=current_surface.index)
-        object_background_color += get_pixel_color(continuous_ray, continuous_ray_intersection, surfaces, materials, lights,
-                                          camera, scene_settings, depth + 1)
+        object_background_color += get_pixel_color(continuous_ray, continuous_ray_intersection, surfaces, materials,
+                                                   lights, camera, scene_settings, depth + 1)
     else:
         object_background_color += scene_settings.background_color
-
 
     pixel_color += (current_material.transparency * object_background_color) + \
                    ((1 - current_material.transparency) * light_color) + object_reflection_color
@@ -228,12 +234,12 @@ def save_image(image_array):
 
 def main():
     parser = argparse.ArgumentParser(description='Python Ray Tracer')
-    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/simple_pool.txt")
+    parser.add_argument('--scene_file', type=str, help='Path to the scene file', default="scenes/pool.txt")
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
     # parser.add_argument('--width', type=int, default=300, help='Image width')
     # parser.add_argument('--height', type=int, default=300, help='Image height')
-    parser.add_argument('--width', type=int, default=300, help='Image width')
-    parser.add_argument('--height', type=int, default=300, help='Image height')
+    parser.add_argument('--width', type=int, default=100, help='Image width')
+    parser.add_argument('--height', type=int, default=100, help='Image height')
     args = parser.parse_args()
 
     # Parse the scene file
@@ -278,7 +284,6 @@ def main():
         counter += 1
         if counter % 1000 == 0:
             print(f"counter = {counter}")
-
 
     # Create result image
     image_array = np.zeros((args.width, args.height, 3))
