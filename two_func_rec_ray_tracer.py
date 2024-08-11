@@ -12,6 +12,9 @@ from surfaces.infinite_plane import InfinitePlane
 from surfaces.sphere import Sphere
 from ray import Ray
 
+# Global caches
+light_intensity_cache = {}
+reflection_direction_cache = {}
 
 def parse_scene_file(file_path):
     objects = []
@@ -117,6 +120,11 @@ def generate_shadow_ray(intersection_point, light_position):
 
 
 def calculate_light_intensity(intersection_point, current_surface_index, light, shadow_rays_number, surfaces):
+    # Use the cache if available
+    cache_key = (tuple(intersection_point), light.index)
+    if cache_key in light_intensity_cache:
+        return light_intensity_cache[cache_key]
+
     # Get light plane samples by light radius and normal
     sample_points = light.get_sample_points(intersection_point, shadow_rays_number)
     total_samples = len(sample_points)
@@ -138,6 +146,9 @@ def calculate_light_intensity(intersection_point, current_surface_index, light, 
 
     # Calculate the total contribution of the light source
     light_intensity = unobstructed_fraction * light.shadow_intensity + (1 - light.shadow_intensity)
+
+    # Store result in cache
+    light_intensity_cache[cache_key] = light_intensity
 
     return light_intensity
 
@@ -233,9 +244,7 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
 
     # Reflection
     if np.any(material.reflection_color > 0) and depth < max_depth:
-        reflected_direction = reflect(ray.direction, normal)
-        # new
-        # reflected_ray = Ray(intersection_point, reflected_direction)
+        reflected_direction = get_reflected_direction(ray.direction, normal)
         reflected_origin = intersection_point + epsilon * reflected_direction
         reflected_ray = Ray(reflected_origin, reflected_direction)
 
@@ -252,11 +261,17 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
     return color
 
 
-def reflect(incident, normal):
-    # Calculate the reflection direction
-    reflected = incident - 2 * np.dot(incident, normal) * normal
-    return vector_utils.normalize_vector(reflected)
+def get_reflected_direction(ray_direction, normal_at_point_on_object):
+    cache_key = (tuple(ray_direction), tuple(normal_at_point_on_object))
+    if cache_key in reflection_direction_cache:
+        return reflection_direction_cache[cache_key]
 
+    reflected_direction = ray_direction - 2 * np.dot(ray_direction, normal_at_point_on_object) * normal_at_point_on_object
+    normalized_reflected_direction = vector_utils.normalize_vector(reflected_direction)
+
+    reflection_direction_cache[cache_key] = normalized_reflected_direction
+
+    return normalized_reflected_direction
 
 def save_image(image_array):
     # image = Image.fromarray(np.uint8(image_array))
