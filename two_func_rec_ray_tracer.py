@@ -16,6 +16,7 @@ from ray import Ray
 light_intensity_cache = {}
 reflection_direction_cache = {}
 
+
 def parse_scene_file(file_path):
     objects = []
     index_counter = 0  # To keep track of objects list indexes
@@ -174,9 +175,6 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scen
     # ray from the camera to the surface intersection point
     intersection_point_to_camera_vector = vector_utils.normalize_vector(camera.position - pixel_ray_to_intersection)
 
-    # seems like the ambient color is not needed
-    # ambient_color = np.zeros(3)
-
     diffuse_color = np.zeros(3)
     specular_color = np.zeros(3)
 
@@ -184,37 +182,33 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scen
         light_intensity = calculate_light_intensity(pixel_ray_to_intersection, surface_index, light,
                                                     scene_settings.root_number_shadow_rays, surfaces)
 
-        # check if the light hits the current surface
-        # light_ray_to_object_direction = pixel_ray_to_intersection - light.position
-        # light_ray_to_object = Ray(light.position, light_ray_to_object_direction)
-        # light_object_ray_distance, light_object_ray_surface_index = get_ray_intersection(light_ray_to_object,
-        #                                                                                 surfaces)
-        # if light_object_ray_surface_index != surface_index:
-        #    continue
-
-        # ambient color is just the color of the material multiplied by the light
-        # ambient_color += current_material.diffuse_color * light.color
-
         # ray between the light and the intersection point on the surface
         intersection_point_to_light_vector = vector_utils.normalize_vector(light.position - pixel_ray_to_intersection)
 
         # calculate the diffuse color of the pixel
-        current_light_diffuse = current_material.diffuse_color * light.color * np.dot(
-            normal, intersection_point_to_light_vector)
+        current_light_diffuse = current_material.diffuse_color * light.color * max(np.dot(
+            normal, intersection_point_to_light_vector), 0.0)
+
         diffuse_color += current_light_diffuse * light_intensity
 
         # Light source reflection ray to the vector from light to surface (not the same as reflect function)
         reflection_point_vector = vector_utils.normalize_vector(
             2 * np.dot(normal, intersection_point_to_light_vector) * normal - intersection_point_to_light_vector)
+
+        # Only add specular if the angle is valid (i.e., reflection is visible)
+        spec_intensity = max(np.dot(reflection_point_vector, intersection_point_to_camera_vector), 0.0)
         current_light_specular = current_material.specular_color * light.specular_intensity * (
-                np.dot(reflection_point_vector, intersection_point_to_camera_vector) ** current_material.shininess)
+                spec_intensity ** current_material.shininess)
+
         specular_color += current_light_specular * light_intensity
 
-    light_color = diffuse_color + specular_color
+    # Ensure the light contribution is not overly bright
+    light_color = np.clip(diffuse_color + specular_color, 0, 1)
+
     pixel_color += (current_material.transparency * scene_settings.background_color) + \
                    ((1 - current_material.transparency) * light_color)
 
-    return pixel_color
+    return np.clip(pixel_color, 0, 1)
 
 
 def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_settings):
@@ -250,13 +244,21 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
 
         reflected_color = trace_ray(
             reflected_ray, depth + 1, max_depth, surfaces, materials, lights, camera, scene_settings)
-        color += material.reflection_color * reflected_color
+
+        # If contribution not big enough
+        if vector_utils.norm_of(reflected_color) > 1e-3:
+            color += material.reflection_color * reflected_color
 
     # Transparency
     if material.transparency > 0 and depth < max_depth:
         continuous_ray = Ray(intersection_point, ray.direction)
-        color += material.transparency * trace_ray(
+
+        transparent_color = trace_ray(
             continuous_ray, depth + 1, max_depth, surfaces, materials, lights, camera, scene_settings)
+
+        # If contribution not big enough
+        if vector_utils.norm_of(transparent_color) > 1e-3:
+            color += material.transparency * transparent_color
 
     return color
 
@@ -272,6 +274,7 @@ def get_reflected_direction(ray_direction, normal_at_point_on_object):
     reflection_direction_cache[cache_key] = normalized_reflected_direction
 
     return normalized_reflected_direction
+
 
 def save_image(image_array):
     # image = Image.fromarray(np.uint8(image_array))

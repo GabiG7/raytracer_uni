@@ -13,3 +13,7 @@ def normalize_vector(vector):
 
     vector /= norm
     return vector
+
+
+def norm_of(vector):
+    return np.linalg.norm(vector)
