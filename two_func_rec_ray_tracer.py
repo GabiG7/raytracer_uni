@@ -15,6 +15,7 @@ from ray import Ray
 # Global caches
 light_intensity_cache = {}
 reflection_direction_cache = {}
+transparency_cache = {}
 
 
 def parse_scene_file(file_path):
@@ -195,18 +196,15 @@ def get_pixel_color(ray, intersection, surfaces, materials, lights, camera, scen
         reflection_point_vector = vector_utils.normalize_vector(
             2 * np.dot(normal, intersection_point_to_light_vector) * normal - intersection_point_to_light_vector)
 
-        # Only add specular if the angle is valid (i.e., reflection is visible)
+        # Only add specular if the angle is valid (the reflection is visible)
         spec_intensity = max(np.dot(reflection_point_vector, intersection_point_to_camera_vector), 0.0)
         current_light_specular = current_material.specular_color * light.specular_intensity * (
                 spec_intensity ** current_material.shininess)
 
         specular_color += current_light_specular * light_intensity
 
-    # Ensure the light contribution is not overly bright
-    light_color = np.clip(diffuse_color + specular_color, 0, 1)
-
-    pixel_color += (current_material.transparency * scene_settings.background_color) + \
-                   ((1 - current_material.transparency) * light_color)
+    light_color = diffuse_color + specular_color
+    pixel_color += (1 - current_material.transparency) * light_color
 
     return np.clip(pixel_color, 0, 1)
 
@@ -215,6 +213,11 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
     # End of recursion
     if depth > max_depth:
         return np.array([0, 0, 0])
+
+    # Transparency cache
+    cache_key = (tuple(ray.origin), tuple(ray.direction), depth)
+    if cache_key in transparency_cache:
+        return transparency_cache[cache_key]
 
     # Tolerance epsilon for intersections
     epsilon = 1e-5
@@ -245,7 +248,7 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
         reflected_color = trace_ray(
             reflected_ray, depth + 1, max_depth, surfaces, materials, lights, camera, scene_settings)
 
-        # If contribution not big enough
+        # If contribution is big enough
         if vector_utils.norm_of(reflected_color) > 1e-3:
             color += material.reflection_color * reflected_color
 
@@ -256,9 +259,12 @@ def trace_ray(ray, depth, max_depth, surfaces, materials, lights, camera, scene_
         transparent_color = trace_ray(
             continuous_ray, depth + 1, max_depth, surfaces, materials, lights, camera, scene_settings)
 
-        # If contribution not big enough
+        # If contribution is big enough
         if vector_utils.norm_of(transparent_color) > 1e-3:
             color += material.transparency * transparent_color
+
+    # Store the result in cache
+    transparency_cache[cache_key] = color
 
     return color
 
@@ -291,8 +297,8 @@ def main():
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
     # parser.add_argument('--width', type=int, default=300, help='Image width')
     # parser.add_argument('--height', type=int, default=300, help='Image height')
-    parser.add_argument('--width', type=int, default=300, help='Image width')
-    parser.add_argument('--height', type=int, default=300, help='Image height')
+    parser.add_argument('--width', type=int, default=500, help='Image width')
+    parser.add_argument('--height', type=int, default=500, help='Image height')
     args = parser.parse_args()
 
     # Parse the scene file
