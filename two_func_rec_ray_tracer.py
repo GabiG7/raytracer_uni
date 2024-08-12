@@ -282,13 +282,12 @@ def get_reflected_direction(ray_direction, normal_at_point_on_object):
     return normalized_reflected_direction
 
 
-def save_image(image_array):
-    # image = Image.fromarray(np.uint8(image_array))
+def save_image(image_array, image_path):
     image_array = image_array * 255
     image = Image.fromarray(image_array.astype('uint8'))
 
     # Save the image to a file
-    image.save("scenes/trial.png")
+    image.save(image_path)
 
 
 def main():
@@ -297,9 +296,10 @@ def main():
     parser.add_argument('--output_image', type=str, help='Name of the output image file', default="output/trial.png")
     # parser.add_argument('--width', type=int, default=300, help='Image width')
     # parser.add_argument('--height', type=int, default=300, help='Image height')
-    parser.add_argument('--width', type=int, default=500, help='Image width')
-    parser.add_argument('--height', type=int, default=500, help='Image height')
+    parser.add_argument('--width', type=int, default=200, help='Image width')
+    parser.add_argument('--height', type=int, default=200, help='Image height')
     args = parser.parse_args()
+
 
     # Parse the scene file
     camera, scene_settings, objects = parse_scene_file(args.scene_file)
@@ -338,14 +338,15 @@ def main():
             pixel_color = np.zeros(3)
             for ray in pixel_rays[i][j]:
                 pixel_color += trace_ray(ray, 0, max_depth, surfaces, materials, lights, camera, scene_settings)
-            pixel_color /= len(pixel_rays[i][j])  # Average the color for supersampling
+            pixel_color /= len(pixel_rays[i][j])  # Average the color for super sampling
             image_array[i, j] = np.clip(pixel_color, 0, 1)
             counter += 1
             if counter % 1000 == 0:
-                print(f"Processed {counter} rays")
+                # print(f"Processed {counter} rays")
+                pass
 
     # Save the output image
-    save_image(image_array)
+    save_image(image_array, args.output_image)
 
 
 if __name__ == '__main__':
